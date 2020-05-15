@@ -18,6 +18,8 @@
 #include "gpio.h"
 #include "uart.h"
 
+#include "ecu_protocol.h"
+
 #define STACK_SIZE 200
 StaticTask_t xTaskBuffer;
 StackType_t xStack[ STACK_SIZE ];
