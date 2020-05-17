@@ -27,7 +27,7 @@ void usart2_read(uint8_t *data,uint16_t count) {
 void usart2_readyRead() {
     if(ecu_read_count_end != ecu_read_count) {
         if(usart2_dma_rx_read_count >= (ecu_read_count_end - ecu_read_count)) {
-        	usart2_read(&((uint8_t*)(&ecu_read)[ecu_read_count]),(ecu_read_count_end - ecu_read_count));
+        	usart2_read(&(((uint8_t*)(&ecu_read))[ecu_read_count]),(ecu_read_count_end - ecu_read_count));
             ecu_read_count = ecu_read_count_end;
             if(ecu_read_count == (ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT)) {
                 ecu_read_count_end += ecu_read.service_data.count + ECU_CRC_COUNT;
@@ -36,7 +36,7 @@ void usart2_readyRead() {
                 uint16_t crc_calc = crc16_ccitt((uint8_t*)(&ecu_read),ecu_read_count_end - ECU_CRC_COUNT);
                 uint16_t crc_read = *(uint16_t*)(&ecu_read.data[ecu_read.service_data.count]);
                 if(crc_calc == crc_read) {
-                    //qDebug() << "CRC Correct:" << crc_read;
+                    GPIOD->ODR ^= GPIO_ODR_ODR_15;
                 } else {
                     //qDebug() << "CRC Incorrect:" << crc_calc << crc_read;
                 }
