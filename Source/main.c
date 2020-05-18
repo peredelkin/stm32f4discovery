@@ -11,23 +11,21 @@ uint16_t ecu_read_count_end;
 ecu_frame_t ecu_read;
 
 #define USART2_DMA_RX_BUFFER_SIZE 256
-uint8_t usart2_dma_rx_read_point = 0;
-uint8_t usart2_dma_rx_write_point = 0;
-uint8_t usart2_dma_rx_read_count = 0;
+
 uint8_t usart2_dma_rx_buffer[USART2_DMA_RX_BUFFER_SIZE];
 
-void usart2_read(uint8_t *data,uint16_t count) {
-	uint16_t read_count = count + 1;
-	while(--read_count) {
-		data[count-read_count] = usart2_dma_rx_buffer[usart2_dma_rx_read_point];
-		usart2_dma_rx_read_point++;
-	}
-}
+usart_dma_t usart2_dma_rx = {
+		0,
+		0,
+		0,
+		usart2_dma_rx_buffer,
+		&DMA1_Stream5->NDTR
+};
 
-void usart2_readyRead() {
+void usart_readyRead(usart_dma_t* usart_dma) {
     if(ecu_read_count_end != ecu_read_count) {
-        if(usart2_dma_rx_read_count >= (ecu_read_count_end - ecu_read_count)) {
-        	usart2_read(&(((uint8_t*)(&ecu_read))[ecu_read_count]),(ecu_read_count_end - ecu_read_count));
+        if(usart_bytesAvailable(usart_dma) >= (ecu_read_count_end - ecu_read_count)) {
+        	usart_read(usart_dma,&((uint8_t*)(&ecu_read))[ecu_read_count],(ecu_read_count_end - ecu_read_count));
             ecu_read_count = ecu_read_count_end;
             if(ecu_read_count == (ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT)) {
                 ecu_read_count_end += ecu_read.service_data.count + ECU_CRC_COUNT;
@@ -48,24 +46,16 @@ void usart2_readyRead() {
     }
 }
 
-void usart2_dma_read() {
-	usart2_dma_rx_write_point = 255 - (DMA1_Stream5->NDTR - 1);
-	usart2_dma_rx_read_count = usart2_dma_rx_write_point - usart2_dma_rx_read_point;
-	if(usart2_dma_rx_read_count) {
-		usart2_readyRead();
-	}
-}
-
 void delay_1s(void) {
 	uint32_t i = 16800000;
 	while (--i);
 }
 
-void vLedTask (void *pvParameters)
+void vUsart2_Read (void *pvParameters)
 {
 	configASSERT( ( uint32_t ) pvParameters == 1UL );
     while(1) {
-    	usart2_dma_read();
+    	usart_dma_read_handler(&usart2_dma_rx);
     }
 }
 
@@ -100,6 +90,6 @@ int main() {
 	gpio_led_init();
 	gpio_uart2_init();
 	uart2_init();
-	xTaskCreateStatic(vLedTask,"vLedTask",STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,xStack,&xTaskBuffer);
+	xTaskCreateStatic(vUsart2_Read,"vUsart2_Read",STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,xStack,&xTaskBuffer);
 	vTaskStartScheduler();
 }
