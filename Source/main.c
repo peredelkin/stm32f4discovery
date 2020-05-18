@@ -17,9 +17,9 @@ uint8_t usart2_dma_rx_read_count = 0;
 uint8_t usart2_dma_rx_buffer[USART2_DMA_RX_BUFFER_SIZE];
 
 void usart2_read(uint8_t *data,uint16_t count) {
-	uint16_t read_count = count;
+	uint16_t read_count = count + 1;
 	while(--read_count) {
-		data[usart2_dma_rx_read_point] = usart2_dma_rx_buffer[usart2_dma_rx_read_point];
+		data[count-read_count] = usart2_dma_rx_buffer[usart2_dma_rx_read_point];
 		usart2_dma_rx_read_point++;
 	}
 }
@@ -38,7 +38,7 @@ void usart2_readyRead() {
                 if(crc_calc == crc_read) {
                     GPIOD->ODR ^= GPIO_ODR_ODR_15;
                 } else {
-                    //qDebug() << "CRC Incorrect:" << crc_calc << crc_read;
+                	GPIOD->ODR ^= GPIO_ODR_ODR_14;
                 }
             }
         }
@@ -51,7 +51,7 @@ void usart2_readyRead() {
 void usart2_dma_read() {
 	usart2_dma_rx_write_point = 255 - (DMA1_Stream5->NDTR - 1);
 	usart2_dma_rx_read_count = usart2_dma_rx_write_point - usart2_dma_rx_read_point;
-	if(usart2_dma_rx_read_point != usart2_dma_rx_write_point) {
+	if(usart2_dma_rx_read_count) {
 		usart2_readyRead();
 	}
 }
