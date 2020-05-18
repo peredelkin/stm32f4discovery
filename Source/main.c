@@ -73,12 +73,15 @@ void uart2_init() {
 	DMA1_Stream5->PAR = (uint32_t)(&USART2->DR);
 	DMA1_Stream5->MAR[0] = (uint32_t)usart2_dma_rx_buffer;
 
-	DMA1_Stream5->CR =	DMA_SxCR_CHSEL_2 |	/* Channel 4 		*/
-						DMA_SxCR_MINC |		/* Memory increment	*/
-						DMA_SxCR_CIRC |		/* Circular mode	*/
-						DMA_SxCR_EN;		/* Stream enable	*/
+	//DMA1_Stream5->FCR = DMA_SxFCR_DMDIS;	/* Direct mode disabled	*/
 
-	USART2->CR1 |=	USART_CR1_UE;			/* USART2 enable	*/
+	DMA1_Stream5->CR =	DMA_SxCR_CHSEL_2 |	/* Channel 4			*/
+						DMA_SxCR_PL |		/* Very high Priority	*/
+						DMA_SxCR_MINC |		/* Memory increment		*/
+						DMA_SxCR_CIRC |		/* Circular mode		*/
+						DMA_SxCR_EN;		/* Stream enable		*/
+
+	USART2->CR1 |=	USART_CR1_UE;			/* USART2 enable		*/
 }
 
 int main() {
