@@ -11,12 +11,13 @@
 #include "stm32f4xx.h"
 #include <stdbool.h>
 
+#define DMA_RX_BUFFER_SIZE 256
+
 typedef struct {
 	uint8_t read;
 	uint8_t write;
 	uint8_t count;
-	uint8_t* buffer;
-	__IO uint32_t* NDTR;
+	DMA_Stream_TypeDef* stream;
 } usart_dma_t;
 
 extern void USART_BaudRate_Set(USART_TypeDef* usart,uint32_t fpclk, uint32_t baud);

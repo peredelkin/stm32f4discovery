@@ -10,21 +10,18 @@ uint16_t ecu_read_count;
 uint16_t ecu_read_count_end;
 ecu_frame_t ecu_read;
 
-#define USART2_DMA_RX_BUFFER_SIZE 256
-
-uint8_t usart2_dma_rx_buffer[USART2_DMA_RX_BUFFER_SIZE];
+uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 
 usart_dma_t usart2_dma_rx = {
 		0,
 		0,
 		0,
-		usart2_dma_rx_buffer,
-		&DMA1_Stream5->NDTR
+		DMA1_Stream5
 };
 
 void usart_readyRead(usart_dma_t* usart_dma) {
     if(ecu_read_count_end != ecu_read_count) {
-        if(usart_bytesAvailable(usart_dma) >= (ecu_read_count_end - ecu_read_count)) {
+        if(usart_dma->count >= (ecu_read_count_end - ecu_read_count)) {
         	usart_read(usart_dma,&((uint8_t*)(&ecu_read))[ecu_read_count],(ecu_read_count_end - ecu_read_count));
             ecu_read_count = ecu_read_count_end;
             if(ecu_read_count == (ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT)) {
@@ -72,7 +69,7 @@ void uart2_init() {
 	//USART2_RX Channel 4 Stream 5
 	//USART2_TX Channel 4 Stream 6
 
-	DMA1_Stream5->NDTR = USART2_DMA_RX_BUFFER_SIZE;
+	DMA1_Stream5->NDTR = DMA_RX_BUFFER_SIZE;
 	DMA1_Stream5->PAR = (uint32_t)(&USART2->DR);
 	DMA1_Stream5->MAR[0] = (uint32_t)usart2_dma_rx_buffer;
 
