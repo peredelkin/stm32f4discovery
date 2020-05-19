@@ -67,8 +67,6 @@ void uart2_init() {
 	USART_BaudRate_Set(USART2,SystemCoreClock/4,9600);
 
 	//USART2_RX Channel 4 Stream 5
-	//USART2_TX Channel 4 Stream 6
-
 	DMA1_Stream5->NDTR = DMA_RX_BUFFER_SIZE;
 	DMA1_Stream5->PAR = (uint32_t)(&USART2->DR);
 	DMA1_Stream5->MAR[0] = (uint32_t)usart2_dma_rx_buffer;
@@ -80,6 +78,8 @@ void uart2_init() {
 						DMA_SxCR_MINC |		/* Memory increment		*/
 						DMA_SxCR_CIRC |		/* Circular mode		*/
 						DMA_SxCR_EN;		/* Stream enable		*/
+
+	//USART2_TX Channel 4 Stream 6
 
 	USART2->CR1 |=	USART_CR1_UE;			/* USART2 enable		*/
 }
