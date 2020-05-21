@@ -12,16 +12,21 @@ ecu_frame_t ecu_read;
 
 uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 
-usart_dma_t usart2_dma_rx = {
-		0,
-		0,
-		0,
-		DMA1_Stream5
-};
+void usart2_readyRead(usart_dma_t* usart_dma);
 
-void usart_readyRead(usart_dma_t* usart_dma) {
+usart_dma_t usart2_dma;
+
+void usart2_dma_struct_init() {
+	usart2_dma.read.count = 0;
+	usart2_dma.read.read_point = 0;
+	usart2_dma.read.write_point = 0;
+	usart2_dma.read.stream = DMA1_Stream5;
+	usart2_dma.usart_readyRead = (void*)(&usart2_readyRead);
+}
+
+void usart2_readyRead(usart_dma_t* usart_dma) {
     if(ecu_read_count_end != ecu_read_count) {
-        if(usart_dma->count >= (ecu_read_count_end - ecu_read_count)) {
+        if(usart_bytesAvailable(usart_dma) >= (ecu_read_count_end - ecu_read_count)) {
         	usart_read(usart_dma,&((uint8_t*)(&ecu_read))[ecu_read_count],(ecu_read_count_end - ecu_read_count));
             ecu_read_count = ecu_read_count_end;
             if(ecu_read_count == (ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT)) {
@@ -52,11 +57,11 @@ void vUsart2_Read (void *pvParameters)
 {
 	configASSERT( ( uint32_t ) pvParameters == 1UL );
     while(1) {
-    	usart_dma_read_handler(&usart2_dma_rx);
+    	usart_dma_read_handler(&usart2_dma);
     }
 }
 
-void uart2_init() {
+void uart2_dma_init() {
 	USART2->CR1 = 	USART_CR1_OVER8 |	/* Oversampling by 8		*/
 					USART_CR1_TE |		/* Transmitter enable		*/
 					USART_CR1_RE;		/* Receiver enable			*/
@@ -89,7 +94,8 @@ int main() {
 	rcc_init();
 	gpio_led_init();
 	gpio_uart2_init();
-	uart2_init();
+	uart2_dma_init();
+	usart2_dma_struct_init();
 	xTaskCreateStatic(vUsart2_Read,"vUsart2_Read",STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,xStack,&xTaskBuffer);
 	vTaskStartScheduler();
 }

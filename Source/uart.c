@@ -36,19 +36,19 @@ void USART_BaudRate_Set(USART_TypeDef* usart,uint32_t fpclk, uint32_t baud) {
 void usart_read(usart_dma_t* usart_dma,uint8_t *data,uint16_t count) {
 	uint16_t read_count = count + 1;
 	while(--read_count) {
-		data[count-read_count] = ((uint8_t*)(usart_dma->stream->MAR[0]))[usart_dma->read];
-		usart_dma->read++;
+		data[count-read_count] = ((uint8_t*)(usart_dma->read.stream->MAR[0]))[usart_dma->read.read_point];
+		usart_dma->read.read_point++;
 	}
 }
 
 uint8_t usart_bytesAvailable(usart_dma_t* usart_dma) {
-	return usart_dma->count;
+	return usart_dma->read.count;
 }
 
 void usart_dma_read_handler(usart_dma_t* usart_dma) {
-	usart_dma->write = 255 - (usart_dma->stream->NDTR - 1);
-	usart_dma->count = usart_dma->write - usart_dma->read;
-	if(usart_dma->count) {
-		usart_readyRead(usart_dma);
+	usart_dma->read.write_point = 255 - (usart_dma->read.stream->NDTR - 1);
+	usart_dma->read.count = usart_dma->read.write_point - usart_dma->read.read_point;
+	if(usart_dma->read.count) {
+		usart_dma->usart_readyRead(usart_dma);
 	}
 }
