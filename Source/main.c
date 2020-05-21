@@ -12,27 +12,55 @@ uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 
 usart_dma_t usart2_dma;
 
-void ecu_read_handler(ecu_rw_t* ecu_rw,usart_dma_t* usart_dma) {
-    if(ecu_rw->count_end != ecu_rw->count) {
-        if(usart_bytesAvailable(usart_dma) >= (ecu_rw->count_end - ecu_rw->count)) {
-        	usart_read(usart_dma,&((uint8_t*)(&ecu_rw->frame))[ecu_rw->count],(ecu_rw->count_end - ecu_rw->count));
-        	ecu_rw->count = ecu_rw->count_end;
-            if(ecu_rw->count == (ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT)) {
-            	ecu_rw->count_end += ecu_rw->frame.service_data.count + ECU_CRC_COUNT;
+volatile void *ecu_addr_0[] = {
+		&GPIOC->ODR,
+		&GPIOD->ODR
+};
+
+void ecu_read_frame(ecu_rw_t *ecu_r,volatile void **data) {
+	uint8_t type = ecu_r->frame.cmd_addr.cmd & 0x0F;
+	uint16_t start = (ecu_r->frame.service_data.start / type);
+	uint16_t count = (ecu_r->frame.service_data.count / type) + 1;
+	uint16_t read_point = 0;
+	uint16_t write_point = 0;
+	while (--count) {
+		switch (type) {
+		case 1: ((uint8_t*)(data[ecu_r->frame.cmd_addr.addr]))[start + write_point] = *(uint8_t*)(&ecu_r->frame.data[read_point]);
+			break;
+		case 2: ((uint16_t*)(data[ecu_r->frame.cmd_addr.addr]))[start + write_point] = *(uint16_t*)(&ecu_r->frame.data[read_point]);
+			break;
+		case 4: ((uint32_t*)(data[ecu_r->frame.cmd_addr.addr]))[start + write_point] = *(uint32_t*)(&ecu_r->frame.data[read_point]);
+			break;
+		default:
+			return;
+		};
+		read_point += type;
+		write_point++;
+	}
+}
+
+void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
+    if(ecu_r->count_end != ecu_r->count) {
+        if(usart_bytesAvailable(usart_dma) >= (ecu_r->count_end - ecu_r->count)) {
+        	usart_read(usart_dma,&((uint8_t*)(&ecu_r->frame))[ecu_r->count],(ecu_r->count_end - ecu_r->count));
+        	ecu_r->count = ecu_r->count_end;
+            if(ecu_r->count == (ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT)) {
+            	ecu_r->count_end += ecu_r->frame.service_data.count + ECU_CRC_COUNT;
             }
-            if(ecu_rw->count == ((ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT + ECU_CRC_COUNT) + ecu_rw->frame.service_data.count)) {
-                uint16_t crc_calc = crc16_ccitt((uint8_t*)(&ecu_rw->frame),ecu_rw->count_end - ECU_CRC_COUNT);
-                uint16_t crc_read = *(uint16_t*)(&ecu_rw->frame.data[ecu_rw->frame.service_data.count]);
+            if(ecu_r->count == ((ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT + ECU_CRC_COUNT) + ecu_r->frame.service_data.count)) {
+                uint16_t crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
+                uint16_t crc_read = *(uint16_t*)(&ecu_r->frame.data[ecu_r->frame.service_data.count]);
                 if(crc_calc == crc_read) {
-                    GPIOD->ODR ^= GPIO_ODR_ODR_15;
+                	ecu_read_frame(ecu_r,ecu_addr_0);
+                    //GPIOD->ODR = *(uint32_t*)(&ecu_r->frame.data[0]);
                 } else {
-                	GPIOD->ODR ^= GPIO_ODR_ODR_14;
+
                 }
             }
         }
     } else {
-    	ecu_rw->count = 0;
-    	ecu_rw->count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
+    	ecu_r->count = 0;
+    	ecu_r->count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
     }
 }
 
