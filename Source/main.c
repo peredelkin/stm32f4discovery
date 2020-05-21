@@ -10,17 +10,7 @@ ecu_rw_t ecu_read;
 
 uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 
-void usart2_readyRead(usart_dma_t* usart_dma);
-
 usart_dma_t usart2_dma;
-
-void usart2_dma_struct_init() {
-	usart2_dma.read.count = 0;
-	usart2_dma.read.read_point = 0;
-	usart2_dma.read.write_point = 0;
-	usart2_dma.read.stream = DMA1_Stream5;
-	usart2_dma.usart_readyRead = (void*)(&usart2_readyRead);
-}
 
 void ecu_read_handler(ecu_rw_t* ecu_rw,usart_dma_t* usart_dma) {
     if(ecu_rw->count_end != ecu_rw->count) {
@@ -89,6 +79,14 @@ void uart2_dma_init() {
 	//USART2_TX Channel 4 Stream 6
 
 	USART2->CR1 |=	USART_CR1_UE;			/* USART2 enable		*/
+}
+
+void usart2_dma_struct_init() {
+	usart2_dma.read.count = 0;
+	usart2_dma.read.read_point = 0;
+	usart2_dma.read.write_point = 0;
+	usart2_dma.read.stream = DMA1_Stream5;
+	usart2_dma.usart_readyRead = (void*)(&usart2_readyRead);
 }
 
 int main() {
