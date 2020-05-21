@@ -6,9 +6,7 @@
  */
 #include "main.h"
 
-uint16_t ecu_read_count;
-uint16_t ecu_read_count_end;
-ecu_frame_t ecu_read;
+ecu_rw_t ecu_read;
 
 uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 
@@ -24,17 +22,17 @@ void usart2_dma_struct_init() {
 	usart2_dma.usart_readyRead = (void*)(&usart2_readyRead);
 }
 
-void usart2_readyRead(usart_dma_t* usart_dma) {
-    if(ecu_read_count_end != ecu_read_count) {
-        if(usart_bytesAvailable(usart_dma) >= (ecu_read_count_end - ecu_read_count)) {
-        	usart_read(usart_dma,&((uint8_t*)(&ecu_read))[ecu_read_count],(ecu_read_count_end - ecu_read_count));
-            ecu_read_count = ecu_read_count_end;
-            if(ecu_read_count == (ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT)) {
-                ecu_read_count_end += ecu_read.service_data.count + ECU_CRC_COUNT;
+void ecu_read_handler(ecu_rw_t* ecu_rw,usart_dma_t* usart_dma) {
+    if(ecu_rw->count_end != ecu_rw->count) {
+        if(usart_bytesAvailable(usart_dma) >= (ecu_rw->count_end - ecu_rw->count)) {
+        	usart_read(usart_dma,&((uint8_t*)(&ecu_rw->frame))[ecu_rw->count],(ecu_rw->count_end - ecu_rw->count));
+        	ecu_rw->count = ecu_rw->count_end;
+            if(ecu_rw->count == (ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT)) {
+            	ecu_rw->count_end += ecu_rw->frame.service_data.count + ECU_CRC_COUNT;
             }
-            if(ecu_read_count == ((ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT + ECU_CRC_COUNT) + ecu_read.service_data.count)) {
-                uint16_t crc_calc = crc16_ccitt((uint8_t*)(&ecu_read),ecu_read_count_end - ECU_CRC_COUNT);
-                uint16_t crc_read = *(uint16_t*)(&ecu_read.data[ecu_read.service_data.count]);
+            if(ecu_rw->count == ((ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT + ECU_CRC_COUNT) + ecu_rw->frame.service_data.count)) {
+                uint16_t crc_calc = crc16_ccitt((uint8_t*)(&ecu_rw->frame),ecu_rw->count_end - ECU_CRC_COUNT);
+                uint16_t crc_read = *(uint16_t*)(&ecu_rw->frame.data[ecu_rw->frame.service_data.count]);
                 if(crc_calc == crc_read) {
                     GPIOD->ODR ^= GPIO_ODR_ODR_15;
                 } else {
@@ -43,9 +41,13 @@ void usart2_readyRead(usart_dma_t* usart_dma) {
             }
         }
     } else {
-        ecu_read_count = 0;
-        ecu_read_count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
+    	ecu_rw->count = 0;
+    	ecu_rw->count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
     }
+}
+
+void usart2_readyRead(usart_dma_t* usart_dma) {
+	ecu_read_handler(&ecu_read,usart_dma);
 }
 
 void delay_1s(void) {

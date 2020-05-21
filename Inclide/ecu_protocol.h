@@ -28,6 +28,12 @@ typedef struct {
     ecu_service_data_t service_data;
     ecu_data_t data[ECU_DATA_COUNT+ECU_CRC_COUNT];
 } ecu_frame_t;
+
+typedef struct {
+	uint16_t count;
+	uint16_t count_end;
+	ecu_frame_t frame;
+} ecu_rw_t;
 #pragma pack()
 
 #endif // ECU_PROTOCOL_H
