@@ -61,20 +61,34 @@ void usart_dma_read_handler(usart_dma_t* usart_dma) {
 	}
 }
 
+//#define USART_DMA_TX_POLL
+
 void usart_dma_write_handler(usart_dma_t *usart_dma) {
 	usart_dma->write.count = usart_dma->write.write_point - usart_dma->write.read_point;
 	if (usart_dma->write.count) {
+#ifdef USART_DMA_TX_POLL
 		if(usart_dma->usart->SR & USART_SR_TXE) {
 			usart_dma->usart->DR = usart_dma->write.data[usart_dma->write.read_point];
 			usart_dma->write.read_point++;
 		}
-//		if(usart_dma->usart->SR & USART_SR_TC) {
-//			usart_dma->write.stream->CR &= ~DMA_SxCR_EN;
-//		}
-//
-//		if(!(usart_dma->write.stream->CR & DMA_SxCR_EN)) {
-//			usart_dma->write.stream->MAR[0] = (uint32_t)(usart_dma->)
-//		}
+#else
+		if(usart_dma->usart->SR & USART_SR_TC) {
+			usart_dma->write.stream->CR &= ~DMA_SxCR_EN;
+			usart_dma->dma->IFCR[usart_dma->write.HIGH] = usart_dma->write.TCIF;
+			usart_dma->usart->SR = ~USART_SR_TC;
+		}
+
+		if(!(usart_dma->write.stream->CR & DMA_SxCR_EN)) {
+			usart_dma->write.stream->MAR[0] = (uint32_t)&(usart_dma->write.data[usart_dma->write.read_point]);
+			if((usart_dma->write.read_point + usart_dma->write.count) > 255) {
+				usart_dma->write.stream->NDTR = (uint8_t)(255 - usart_dma->write.read_point) + 1;
+			} else {
+				usart_dma->write.stream->NDTR = usart_dma->write.count;
+			}
+			usart_dma->write.read_point += usart_dma->write.stream->NDTR;
+			usart_dma->write.stream->CR |= DMA_SxCR_EN;
+		}
+#endif
 	}
 }
 

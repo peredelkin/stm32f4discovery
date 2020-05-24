@@ -52,11 +52,12 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
                 uint16_t crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
                 uint16_t crc_read = *(uint16_t*)(&ecu_r->frame.data[ecu_r->frame.service_data.count]);
                 if(crc_calc == crc_read) {
-                	usart_write(usart_dma,(uint8_t*)(&ecu_r->frame),ecu_r->count);
-                	ecu_read_frame(ecu_r,ecu_addr_0);
-                    //GPIOD->ODR = *(uint32_t*)(&ecu_r->frame.data[0]);
+                	if(ecu_r->frame.cmd_addr.cmd & 0x10) {
+                		usart_write(usart_dma,(uint8_t*)(&ecu_r->frame),ecu_r->count);
+                		ecu_read_frame(ecu_r,ecu_addr_0);
+                	}
                 } else {
-
+                	//crc incorrect
                 }
             }
         }
@@ -88,7 +89,7 @@ void uart2_dma_init() {
 					USART_CR1_TE |		/* Transmitter enable		*/
 					USART_CR1_RE;		/* Receiver enable			*/
 
-	USART2->CR3 =	/*USART_CR3_DMAT |*/	/* DMA enable transmitter	*/
+	USART2->CR3 =	USART_CR3_DMAT |	/* DMA enable transmitter	*/
 					USART_CR3_DMAR;		/* DMA enable receiver		*/
 
 	USART_BaudRate_Set(USART2,SystemCoreClock/4,9600);
