@@ -80,8 +80,8 @@ void usart_dma_write_handler(usart_dma_t *usart_dma) {
 
 		if(!(usart_dma->write.stream->CR & DMA_SxCR_EN)) {
 			usart_dma->write.stream->MAR[0] = (uint32_t)&(usart_dma->write.data[usart_dma->write.read_point]);
-			if((usart_dma->write.read_point + usart_dma->write.count) > 255) {
-				usart_dma->write.stream->NDTR = (uint8_t)(255 - usart_dma->write.read_point) + 1;
+			if((usart_dma->write.read_point + usart_dma->write.count) >= 255) {
+				usart_dma->write.stream->NDTR = (255 - usart_dma->write.read_point) + 1;
 			} else {
 				usart_dma->write.stream->NDTR = usart_dma->write.count;
 			}
