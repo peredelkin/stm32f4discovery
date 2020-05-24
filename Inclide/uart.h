@@ -20,12 +20,15 @@ typedef struct {
 	uint8_t count;
 	uint8_t *data;
 	DMA_Stream_TypeDef* stream;
+	uint32_t TCIF;
+	bool HIGH;
 } usart_dma_rw_t;
 
 typedef struct {
 	usart_dma_rw_t read;
 	usart_dma_rw_t write;
 	USART_TypeDef* usart;
+	DMA_TypeDef* dma;
 	void (*usart_readyRead)(void* usart_dma);
 } usart_dma_t;
 
@@ -35,6 +38,6 @@ extern void usart_read(usart_dma_t* usart_dma,uint8_t *data,uint16_t count);
 extern void usart_write(usart_dma_t* usart_dma,uint8_t *data,uint16_t count);
 extern uint8_t usart_bytesAvailable(usart_dma_t* usart_dma);
 extern void usart_dma_read_handler(usart_dma_t* usart_dma);
-extern void usart_dma_wire_handler(usart_dma_t* usart_dma);
+extern void usart_dma_write_handler(usart_dma_t* usart_dma);
 
 #endif /* INCLIDE_UART_H_ */

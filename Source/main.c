@@ -79,7 +79,7 @@ void vUsart2_RW (void *pvParameters) {
 	configASSERT( ( uint32_t ) pvParameters == 1UL );
     while(1) {
     	usart_dma_read_handler(&usart2_dma);
-    	usart_dma_wire_handler(&usart2_dma);
+    	usart_dma_write_handler(&usart2_dma);
     }
 }
 
@@ -104,6 +104,11 @@ void uart2_dma_init() {
 						DMA_SxCR_EN;		/* Stream enable		*/
 
 	//USART2_TX Channel 4 Stream 6
+	DMA1_Stream6->PAR = (uint32_t)(&USART2->DR);
+	DMA1_Stream6->CR =	DMA_SxCR_CHSEL_2 |	/* Channel 4			*/
+						DMA_SxCR_PL |		/* Very high Priority	*/
+						DMA_SxCR_MINC |		/* Memory increment		*/
+						DMA_SxCR_DIR_0;		/* Memory-to-peripheral	*/
 
 
 	USART2->CR1 |=	USART_CR1_UE;			/* USART2 enable		*/
@@ -115,14 +120,19 @@ void usart2_dma_struct_init() {
 	usart2_dma.read.write_point = 0;
 	usart2_dma.read.data = usart2_dma_rx_buffer;
 	usart2_dma.read.stream = DMA1_Stream5;
+	usart2_dma.read.TCIF = DMA_HISR_TCIF5;
+	usart2_dma.read.HIGH = true;
 
 	usart2_dma.write.count = 0;
 	usart2_dma.write.read_point = 0;
 	usart2_dma.write.write_point = 0;
 	usart2_dma.write.data = usart2_dma_tx_buffer;
 	usart2_dma.write.stream = DMA1_Stream6;
+	usart2_dma.write.TCIF = DMA_HISR_TCIF6;
+	usart2_dma.write.HIGH = true;
 
 	usart2_dma.usart = USART2;
+	usart2_dma.dma = DMA1;
 	usart2_dma.usart_readyRead = (void*)(&usart2_readyRead);
 }
 

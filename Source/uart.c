@@ -61,13 +61,20 @@ void usart_dma_read_handler(usart_dma_t* usart_dma) {
 	}
 }
 
-void usart_dma_wire_handler(usart_dma_t *usart_dma) {
-	usart_dma->write.count = usart_dma->read.write_point - usart_dma->read.read_point;
+void usart_dma_write_handler(usart_dma_t *usart_dma) {
+	usart_dma->write.count = usart_dma->write.write_point - usart_dma->write.read_point;
 	if (usart_dma->write.count) {
 		if(usart_dma->usart->SR & USART_SR_TXE) {
 			usart_dma->usart->DR = usart_dma->write.data[usart_dma->write.read_point];
 			usart_dma->write.read_point++;
 		}
+//		if(usart_dma->usart->SR & USART_SR_TC) {
+//			usart_dma->write.stream->CR &= ~DMA_SxCR_EN;
+//		}
+//
+//		if(!(usart_dma->write.stream->CR & DMA_SxCR_EN)) {
+//			usart_dma->write.stream->MAR[0] = (uint32_t)(usart_dma->)
+//		}
 	}
 }
 
