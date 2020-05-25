@@ -9,6 +9,8 @@
 ecu_rw_t ecu_frame_read;
 ecu_rw_t ecu_frame_write;
 uint8_t ecu_cmd_type;
+uint16_t ecu_frame_crc_calc;
+uint16_t ecu_frame_crc_read;
 
 uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 uint8_t usart2_dma_tx_buffer[DMA_TX_BUFFER_SIZE];
@@ -90,11 +92,19 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
 			}
 				break;
 			case 1: { //запись
-
+				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[ecu_r->frame.service_data.count]);
+				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
+				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
+					GPIOD->ODR ^= GPIO_ODR_ODR_15;
+				}
 			}
 				break;
 			case 2: { //чтение
-
+				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[0]);
+				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
+				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
+					GPIOD->ODR ^= GPIO_ODR_ODR_14;
+				}
 			}
 				break;
 			default:
