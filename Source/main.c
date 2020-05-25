@@ -8,8 +8,10 @@
 
 ecu_rw_t ecu_read;
 
+#pragma pack(1)
 uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 uint8_t usart2_dma_tx_buffer[DMA_TX_BUFFER_SIZE];
+#pragma pack()
 
 usart_dma_t usart2_dma;
 
