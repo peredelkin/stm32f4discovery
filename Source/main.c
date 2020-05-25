@@ -84,7 +84,7 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
 				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[ecu_r->frame.service_data.count]);
 				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
 				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
-					GPIOD->ODR ^= GPIO_ODR_ODR_15;
+					ecu_read_frame_data(ecu_r,ecu_addr_0,(ecu_r->frame.cmd_addr.cmd & 0x0F));
 				}
 			}
 				break;
@@ -92,7 +92,7 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
 				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[0]);
 				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
 				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
-					GPIOD->ODR ^= GPIO_ODR_ODR_14;
+					GPIOD->ODR ^= GPIO_ODR_ODR_12;
 				}
 			}
 				break;
