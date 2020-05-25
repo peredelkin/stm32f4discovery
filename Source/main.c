@@ -20,8 +20,7 @@ volatile void *ecu_addr_0[] = {
 		&GPIOD->ODR
 };
 
-void ecu_read_frame(ecu_rw_t *ecu_r,volatile void **data) {
-	uint8_t type = ecu_r->frame.cmd_addr.cmd & 0x0F;
+void ecu_read_frame_data(ecu_rw_t *ecu_r,volatile void **data,uint8_t type) {
 	uint16_t start = (ecu_r->frame.service_data.start / type);
 	uint16_t count = (ecu_r->frame.service_data.count / type) + 1;
 	uint16_t read_point = 0;
@@ -54,10 +53,16 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
                 uint16_t crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
                 uint16_t crc_read = *(uint16_t*)(&ecu_r->frame.data[ecu_r->frame.service_data.count]);
                 if(crc_calc == crc_read) {
-                	if(ecu_r->frame.cmd_addr.cmd & 0x10) {
-                		usart_write(usart_dma,(uint8_t*)(&ecu_r->frame),ecu_r->count);
-                		ecu_read_frame(ecu_r,ecu_addr_0);
-                	}
+                	uint8_t cmd = (uint8_t)((ecu_r->frame.cmd_addr.cmd & 0xF0) >> 4);
+                	uint8_t type = (uint8_t)(ecu_r->frame.cmd_addr.cmd & 0x0F);
+
+                	switch (cmd) {
+                	case 1: ecu_read_frame_data(ecu_r,ecu_addr_0,type);
+                		break;
+                	default:
+                		break;
+                	};
+
                 } else {
                 	//crc incorrect
                 }
