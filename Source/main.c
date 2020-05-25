@@ -6,17 +6,6 @@
  */
 #include "main.h"
 
-ecu_rw_t ecu_frame_read;
-ecu_rw_t ecu_frame_write;
-uint8_t ecu_cmd_type;
-uint16_t ecu_frame_crc_calc;
-uint16_t ecu_frame_crc_read;
-
-uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
-uint8_t usart2_dma_tx_buffer[DMA_TX_BUFFER_SIZE];
-
-usart_dma_t usart2_dma;
-
 volatile void *ecu_addr_0[] = {
 		&GPIOC->ODR,
 		&GPIOD->ODR
@@ -133,37 +122,6 @@ void vUsart2_RW (void *pvParameters) {
     	usart_dma_read_handler(&usart2_dma);
     	usart_dma_write_handler(&usart2_dma);
     }
-}
-
-void uart2_dma_init() {
-	USART2->CR1 = 	USART_CR1_OVER8 |	/* Oversampling by 8		*/
-					USART_CR1_TE |		/* Transmitter enable		*/
-					USART_CR1_RE;		/* Receiver enable			*/
-
-	USART2->CR3 =	USART_CR3_DMAT |	/* DMA enable transmitter	*/
-					USART_CR3_DMAR;		/* DMA enable receiver		*/
-
-	USART_BaudRate_Set(USART2,SystemCoreClock/4,9600);
-
-	//USART2_RX Channel 4 Stream 5
-	DMA1_Stream5->NDTR = DMA_RX_BUFFER_SIZE;
-	DMA1_Stream5->PAR = (uint32_t)(&USART2->DR);
-	DMA1_Stream5->MAR[0] = (uint32_t)usart2_dma_rx_buffer;
-	DMA1_Stream5->CR =	DMA_SxCR_CHSEL_2 |	/* Channel 4			*/
-						DMA_SxCR_PL |		/* Very high Priority	*/
-						DMA_SxCR_MINC |		/* Memory increment		*/
-						DMA_SxCR_CIRC |		/* Circular mode		*/
-						DMA_SxCR_EN;		/* Stream enable		*/
-
-	//USART2_TX Channel 4 Stream 6
-	DMA1_Stream6->PAR = (uint32_t)(&USART2->DR);
-	DMA1_Stream6->CR =	DMA_SxCR_CHSEL_2 |	/* Channel 4			*/
-						DMA_SxCR_PL |		/* Very high Priority	*/
-						DMA_SxCR_MINC |		/* Memory increment		*/
-						DMA_SxCR_DIR_0;		/* Memory-to-peripheral	*/
-
-
-	USART2->CR1 |=	USART_CR1_UE;			/* USART2 enable		*/
 }
 
 void usart2_dma_struct_init() {
