@@ -6,8 +6,9 @@
  */
 #include "main.h"
 
-ecu_rw_t ecu_read;
-ecu_rw_t ecu_write;
+ecu_rw_t ecu_frame_read;
+ecu_rw_t ecu_frame_write;
+uint8_t ecu_cmd_type;
 
 uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 uint8_t usart2_dma_tx_buffer[DMA_TX_BUFFER_SIZE];
@@ -73,15 +74,42 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
         if(usart_bytesAvailable(usart_dma) >= (ecu_r->count_end - ecu_r->count)) {
         	usart_read(usart_dma,&((uint8_t*)(&ecu_r->frame))[ecu_r->count],(ecu_r->count_end - ecu_r->count));
         	ecu_r->count = ecu_r->count_end;
+			switch (ecu_cmd_type) {
+			case 0: { //определение типа команды
+				ecu_cmd_type = (uint8_t) ((ecu_r->frame.cmd_addr.cmd & 0xF0) >> 4);
+				switch (ecu_cmd_type) {
+				case 1:
+					ecu_r->count_end += ecu_r->frame.service_data.count + ECU_CRC_COUNT; //запись
+					break;
+				case 2:
+					ecu_r->count_end += ECU_CRC_COUNT; //чтение
+					break;
+				default:
+					break;
+				};
+			}
+				break;
+			case 1: { //запись
+
+			}
+				break;
+			case 2: { //чтение
+
+			}
+				break;
+			default:
+				break;
+			};
         }
     } else {
+    	ecu_cmd_type = 0;
     	ecu_r->count = 0;
     	ecu_r->count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
     }
 }
 
 void usart2_readyRead(usart_dma_t* usart_dma) {
-	ecu_read_handler(&ecu_read,usart_dma);
+	ecu_read_handler(&ecu_frame_read,usart_dma);
 }
 
 void delay_1s(void) {
