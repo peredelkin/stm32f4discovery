@@ -78,6 +78,10 @@ void usart_dma_write_handler(usart_dma_t *usart_dma) {
 			usart_dma->write.stream->NDTR = usart_dma->write.count;
 			usart_dma->write.read_point += usart_dma->write.count;
 			usart_dma->write.stream->CR |= DMA_SxCR_EN;
+		} else {
+			if(usart_dma->usart->SR & USART_SR_TC) {
+				usart_dma->usart->SR = ~USART_SR_TC;
+			}
 		}
 	}
 }
