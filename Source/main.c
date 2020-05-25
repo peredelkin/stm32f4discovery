@@ -32,8 +32,8 @@ void ecu_read_frame_data(ecu_rw_t *ecu_r,volatile void **data,uint8_t type) {
 	}
 }
 
-void ecu_write_frame_data(ecu_rw_t* ecu_w,volatile void **data,uint8_t cmd,uint8_t type,ecu_rw_t* ecu_r) {
-	ecu_w->frame.cmd_addr.cmd = (((uint8_t)(cmd << 4)) & 0xF0) | ((uint8_t)(type & 0x0F));
+void ecu_write_frame_data(ecu_rw_t* ecu_w,volatile void **data,uint8_t type,ecu_rw_t* ecu_r) {
+	ecu_w->frame.cmd_addr.cmd = ecu_r->frame.cmd_addr.cmd; // (!)
 	ecu_w->frame.cmd_addr.addr = ecu_r->frame.cmd_addr.addr;
 	ecu_w->frame.service_data.start = ecu_r->frame.service_data.start;
 	ecu_w->frame.service_data.count = ecu_r->frame.service_data.count;
@@ -92,7 +92,8 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
 				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[0]);
 				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
 				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
-					GPIOD->ODR ^= GPIO_ODR_ODR_12;
+					ecu_write_frame_data(&ecu_frame_write,ecu_addr_0,(ecu_r->frame.cmd_addr.cmd & 0x0F),ecu_r);
+					usart_write(usart_dma,(uint8_t*)(&ecu_frame_write.frame),ecu_frame_write.count);
 				}
 			}
 				break;
