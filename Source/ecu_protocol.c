@@ -1,0 +1,100 @@
+#include "ecu_protocol.h"
+
+void ecu_read_frame_data(ecu_rw_t *ecu_r,volatile void **data) {
+	uint8_t type = ecu_r->frame.cmd_addr.cmd & ECU_DATA_TYPE_MASK;
+	uint16_t write_start = (ecu_r->frame.service_data.start / type);
+	uint16_t write_count = (ecu_r->frame.service_data.count / type) + 1;
+	uint16_t read_point = 0;
+	uint16_t write_point = 0;
+	while (--write_count) {
+		switch (type) {
+		case ECU_DATA_TYPE_8: ((uint8_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint8_t*)(&ecu_r->frame.data[read_point]);
+			break;
+		case ECU_DATA_TYPE_16: ((uint16_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint16_t*)(&ecu_r->frame.data[read_point]);
+			break;
+		case ECU_DATA_TYPE_32: ((uint32_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint32_t*)(&ecu_r->frame.data[read_point]);
+			break;
+		default:
+			return;
+		};
+		read_point += type;
+		write_point++;
+	}
+}
+
+void ecu_write_frame_data(ecu_rw_t* ecu_w,volatile void **data,ecu_rw_t* ecu_r) {
+	ecu_w->frame.cmd_addr.cmd = ecu_r->frame.cmd_addr.cmd;
+	ecu_w->frame.cmd_addr.addr = ecu_r->frame.cmd_addr.addr;
+	ecu_w->frame.service_data.start = ecu_r->frame.service_data.start;
+	ecu_w->frame.service_data.count = ecu_r->frame.service_data.count;
+	uint8_t type = ecu_w->frame.cmd_addr.cmd & ECU_DATA_TYPE_MASK;
+	uint16_t read_start = (ecu_w->frame.service_data.start / type);
+	uint16_t read_count = (ecu_w->frame.service_data.count / type) + 1;
+	uint16_t write_point = 0;
+	uint16_t read_point = 0;
+	while (--read_count) {
+		switch (type) {
+		case ECU_DATA_TYPE_8: *(uint8_t*)(&ecu_w->frame.data[write_point]) = ((uint8_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
+			break;
+		case ECU_DATA_TYPE_16: *(uint16_t*)(&ecu_w->frame.data[write_point]) = ((uint16_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
+			break;
+		case ECU_DATA_TYPE_32: *(uint32_t*)(&ecu_w->frame.data[write_point]) = ((uint32_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
+			break;
+		default:
+			return;
+		};
+		write_point += type;
+		read_point++;
+	}
+	ecu_w->count = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT + ecu_w->frame.service_data.count;
+	*(uint16_t*)(&ecu_w->frame.data[ecu_w->frame.service_data.count]) = crc16_ccitt((uint8_t*)(&ecu_w->frame),ecu_w->count);
+	ecu_w->count += ECU_CRC_COUNT;
+}
+
+void ecu_protocol_handler(ecu_protocol_t* protocol,usart_dma_t* usart_dma,volatile void **directory) {
+    if(protocol->read.count_end != protocol->read.count) {
+        if(usart_bytesAvailable(usart_dma) >= (protocol->read.count_end - protocol->read.count)) {
+        	usart_read(usart_dma,&((uint8_t*)(&protocol->read.frame))[protocol->read.count],(protocol->read.count_end - protocol->read.count));
+        	protocol->read.count = protocol->read.count_end;
+			switch (protocol->cmd_type) {
+			case ECU_CMD_TYPE_DEF: {
+				protocol->cmd_type = (uint8_t) ((protocol->read.frame.cmd_addr.cmd & ECU_CMD_MASK));
+				switch (protocol->cmd_type) {
+				case ECU_CMD_WRITE:
+					protocol->read.count_end += protocol->read.frame.service_data.count + ECU_CRC_COUNT;
+					break;
+				case ECU_CMD_READ:
+					protocol->read.count_end += ECU_CRC_COUNT;
+					break;
+				default:
+					break;
+				};
+			}
+				break;
+			case ECU_CMD_WRITE: {
+				protocol->crc_read = *(uint16_t*)(&protocol->read.frame.data[protocol->read.frame.service_data.count]);
+				protocol->crc_calc = crc16_ccitt((uint8_t*)(&protocol->read.frame),protocol->read.count_end - ECU_CRC_COUNT);
+				if(protocol->crc_read == protocol->crc_calc) {
+					ecu_read_frame_data(&protocol->read,directory);
+				}
+			}
+				break;
+			case ECU_CMD_READ: {
+				protocol->crc_read = *(uint16_t*)(&protocol->read.frame.data[0]);
+				protocol->crc_calc = crc16_ccitt((uint8_t*)(&protocol->read.frame),protocol->read.count_end - ECU_CRC_COUNT);
+				if(protocol->crc_read == protocol->crc_calc) {
+					ecu_write_frame_data(&protocol->write,directory,&protocol->read);
+					usart_write(usart_dma,(uint8_t*)(&protocol->write.frame),protocol->write.count);
+				}
+			}
+				break;
+			default:
+				break;
+			};
+        }
+    } else {
+    	protocol->cmd_type = ECU_CMD_TYPE_DEF;
+    	protocol->read.count = 0;
+    	protocol->read.count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
+    }
+}

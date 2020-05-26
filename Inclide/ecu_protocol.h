@@ -1,7 +1,8 @@
 #ifndef ECU_PROTOCOL_H
 #define ECU_PROTOCOL_H
 
-#include <crc16_ccitt.h>
+#include "uart.h"
+#include "crc16_ccitt.h"
 
 #define ECU_CMD_ADDR_COUNT 3
 #define ECU_SERVICE_DATA_COUNT 3
@@ -50,5 +51,7 @@ typedef struct {
 	uint16_t crc_read;
 } ecu_protocol_t;
 #pragma pack()
+
+extern void ecu_protocol_handler(ecu_protocol_t* protocol,usart_dma_t* usart_dma,volatile void **directory);
 
 #endif // ECU_PROTOCOL_H
