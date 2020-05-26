@@ -62,20 +62,20 @@ void ecu_write_frame_data(ecu_rw_t* ecu_w,volatile void **data,ecu_rw_t* ecu_r) 
 	ecu_w->count += ECU_CRC_COUNT;
 }
 
-void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
-    if(ecu_r->count_end != ecu_r->count) {
-        if(usart_bytesAvailable(usart_dma) >= (ecu_r->count_end - ecu_r->count)) {
-        	usart_read(usart_dma,&((uint8_t*)(&ecu_r->frame))[ecu_r->count],(ecu_r->count_end - ecu_r->count));
-        	ecu_r->count = ecu_r->count_end;
-			switch (ecu_cmd_type) {
+void ecu_protocol_handler(ecu_protocol_t* protocol,usart_dma_t* usart_dma) {
+    if(protocol->read.count_end != protocol->read.count) {
+        if(usart_bytesAvailable(usart_dma) >= (protocol->read.count_end - protocol->read.count)) {
+        	usart_read(usart_dma,&((uint8_t*)(&protocol->read.frame))[protocol->read.count],(protocol->read.count_end - protocol->read.count));
+        	protocol->read.count = protocol->read.count_end;
+			switch (protocol->cmd_type) {
 			case ECU_CMD_TYPE_DEF: {
-				ecu_cmd_type = (uint8_t) ((ecu_r->frame.cmd_addr.cmd & ECU_CMD_MASK));
-				switch (ecu_cmd_type) {
+				protocol->cmd_type = (uint8_t) ((protocol->read.frame.cmd_addr.cmd & ECU_CMD_MASK));
+				switch (protocol->cmd_type) {
 				case ECU_CMD_WRITE:
-					ecu_r->count_end += ecu_r->frame.service_data.count + ECU_CRC_COUNT;
+					protocol->read.count_end += protocol->read.frame.service_data.count + ECU_CRC_COUNT;
 					break;
 				case ECU_CMD_READ:
-					ecu_r->count_end += ECU_CRC_COUNT;
+					protocol->read.count_end += ECU_CRC_COUNT;
 					break;
 				default:
 					break;
@@ -83,19 +83,19 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
 			}
 				break;
 			case ECU_CMD_WRITE: {
-				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[ecu_r->frame.service_data.count]);
-				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
-				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
-					ecu_read_frame_data(ecu_r,ecu_addr_0);
+				protocol->crc_read = *(uint16_t*)(&protocol->read.frame.data[protocol->read.frame.service_data.count]);
+				protocol->crc_calc = crc16_ccitt((uint8_t*)(&protocol->read.frame),protocol->read.count_end - ECU_CRC_COUNT);
+				if(protocol->crc_read == protocol->crc_calc) {
+					ecu_read_frame_data(&protocol->read,ecu_addr_0);
 				}
 			}
 				break;
 			case ECU_CMD_READ: {
-				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[0]);
-				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
-				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
-					ecu_write_frame_data(&ecu_frame_write,ecu_addr_0,ecu_r);
-					usart_write(usart_dma,(uint8_t*)(&ecu_frame_write.frame),ecu_frame_write.count);
+				protocol->crc_read = *(uint16_t*)(&protocol->read.frame.data[0]);
+				protocol->crc_calc = crc16_ccitt((uint8_t*)(&protocol->read.frame),protocol->read.count_end - ECU_CRC_COUNT);
+				if(protocol->crc_read == protocol->crc_calc) {
+					ecu_write_frame_data(&protocol->write,ecu_addr_0,&protocol->read);
+					usart_write(usart_dma,(uint8_t*)(&protocol->write.frame),protocol->write.count);
 				}
 			}
 				break;
@@ -104,14 +104,14 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
 			};
         }
     } else {
-    	ecu_cmd_type = ECU_CMD_TYPE_DEF;
-    	ecu_r->count = 0;
-    	ecu_r->count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
+    	protocol->cmd_type = ECU_CMD_TYPE_DEF;
+    	protocol->read.count = 0;
+    	protocol->read.count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
     }
 }
 
 void usart2_readyRead(usart_dma_t* usart_dma) {
-	ecu_read_handler(&ecu_frame_read,usart_dma);
+	ecu_protocol_handler(&ecu_protocol,usart_dma);
 }
 
 void delay_1s(void) {

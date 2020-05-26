@@ -24,12 +24,7 @@
 StaticTask_t vUsart2_TaskBuffer;
 StackType_t vUsart2_Stack[ VUSART2_STACK_SIZE ];
 
-
-ecu_rw_t ecu_frame_read;
-ecu_rw_t ecu_frame_write;
-uint8_t ecu_cmd_type;
-uint16_t ecu_frame_crc_calc;
-uint16_t ecu_frame_crc_read;
+ecu_protocol_t ecu_protocol;
 
 uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 uint8_t usart2_dma_tx_buffer[DMA_TX_BUFFER_SIZE];

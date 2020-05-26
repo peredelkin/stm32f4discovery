@@ -41,6 +41,14 @@ typedef struct {
 	uint16_t count_end;
 	ecu_frame_t frame;
 } ecu_rw_t;
+
+typedef struct {
+	ecu_rw_t read;
+	ecu_rw_t write;
+	uint8_t cmd_type;
+	uint16_t crc_calc;
+	uint16_t crc_read;
+} ecu_protocol_t;
 #pragma pack()
 
 #endif // ECU_PROTOCOL_H
