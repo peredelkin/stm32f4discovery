@@ -11,18 +11,19 @@ volatile void *ecu_addr_0[] = {
 		&GPIOD->ODR
 };
 
-void ecu_read_frame_data(ecu_rw_t *ecu_r,volatile void **data,uint8_t type) {
+void ecu_read_frame_data(ecu_rw_t *ecu_r,volatile void **data) {
+	uint8_t type = ecu_r->frame.cmd_addr.cmd & ECU_DATA_TYPE_MASK;
 	uint16_t write_start = (ecu_r->frame.service_data.start / type);
 	uint16_t write_count = (ecu_r->frame.service_data.count / type) + 1;
 	uint16_t read_point = 0;
 	uint16_t write_point = 0;
 	while (--write_count) {
 		switch (type) {
-		case 1: ((uint8_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint8_t*)(&ecu_r->frame.data[read_point]);
+		case ECU_DATA_TYPE_8: ((uint8_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint8_t*)(&ecu_r->frame.data[read_point]);
 			break;
-		case 2: ((uint16_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint16_t*)(&ecu_r->frame.data[read_point]);
+		case ECU_DATA_TYPE_16: ((uint16_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint16_t*)(&ecu_r->frame.data[read_point]);
 			break;
-		case 4: ((uint32_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint32_t*)(&ecu_r->frame.data[read_point]);
+		case ECU_DATA_TYPE_32: ((uint32_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + write_point] = *(uint32_t*)(&ecu_r->frame.data[read_point]);
 			break;
 		default:
 			return;
@@ -32,22 +33,23 @@ void ecu_read_frame_data(ecu_rw_t *ecu_r,volatile void **data,uint8_t type) {
 	}
 }
 
-void ecu_write_frame_data(ecu_rw_t* ecu_w,volatile void **data,uint8_t type,ecu_rw_t* ecu_r) {
-	ecu_w->frame.cmd_addr.cmd = ecu_r->frame.cmd_addr.cmd; // (!)
+void ecu_write_frame_data(ecu_rw_t* ecu_w,volatile void **data,ecu_rw_t* ecu_r) {
+	ecu_w->frame.cmd_addr.cmd = ecu_r->frame.cmd_addr.cmd;
 	ecu_w->frame.cmd_addr.addr = ecu_r->frame.cmd_addr.addr;
 	ecu_w->frame.service_data.start = ecu_r->frame.service_data.start;
 	ecu_w->frame.service_data.count = ecu_r->frame.service_data.count;
+	uint8_t type = ecu_w->frame.cmd_addr.cmd & ECU_DATA_TYPE_MASK;
 	uint16_t read_start = (ecu_w->frame.service_data.start / type);
 	uint16_t read_count = (ecu_w->frame.service_data.count / type) + 1;
 	uint16_t write_point = 0;
 	uint16_t read_point = 0;
 	while (--read_count) {
 		switch (type) {
-		case 1: *(uint8_t*)(&ecu_w->frame.data[write_point]) = ((uint8_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
+		case ECU_DATA_TYPE_8: *(uint8_t*)(&ecu_w->frame.data[write_point]) = ((uint8_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
 			break;
-		case 2: *(uint16_t*)(&ecu_w->frame.data[write_point]) = ((uint16_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
+		case ECU_DATA_TYPE_16: *(uint16_t*)(&ecu_w->frame.data[write_point]) = ((uint16_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
 			break;
-		case 4: *(uint32_t*)(&ecu_w->frame.data[write_point]) = ((uint32_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
+		case ECU_DATA_TYPE_32: *(uint32_t*)(&ecu_w->frame.data[write_point]) = ((uint32_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + read_point];
 			break;
 		default:
 			return;
@@ -66,33 +68,33 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
         	usart_read(usart_dma,&((uint8_t*)(&ecu_r->frame))[ecu_r->count],(ecu_r->count_end - ecu_r->count));
         	ecu_r->count = ecu_r->count_end;
 			switch (ecu_cmd_type) {
-			case 0: { //определение типа команды
-				ecu_cmd_type = (uint8_t) ((ecu_r->frame.cmd_addr.cmd & 0xF0) >> 4);
+			case ECU_CMD_TYPE_DEF: {
+				ecu_cmd_type = (uint8_t) ((ecu_r->frame.cmd_addr.cmd & ECU_CMD_MASK));
 				switch (ecu_cmd_type) {
-				case 1:
-					ecu_r->count_end += ecu_r->frame.service_data.count + ECU_CRC_COUNT; //запись
+				case ECU_CMD_WRITE:
+					ecu_r->count_end += ecu_r->frame.service_data.count + ECU_CRC_COUNT;
 					break;
-				case 2:
-					ecu_r->count_end += ECU_CRC_COUNT; //чтение
+				case ECU_CMD_READ:
+					ecu_r->count_end += ECU_CRC_COUNT;
 					break;
 				default:
 					break;
 				};
 			}
 				break;
-			case 1: { //запись
+			case ECU_CMD_WRITE: {
 				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[ecu_r->frame.service_data.count]);
 				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
 				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
-					ecu_read_frame_data(ecu_r,ecu_addr_0,(ecu_r->frame.cmd_addr.cmd & 0x0F));
+					ecu_read_frame_data(ecu_r,ecu_addr_0);
 				}
 			}
 				break;
-			case 2: { //чтение
+			case ECU_CMD_READ: {
 				ecu_frame_crc_read = *(uint16_t*)(&ecu_r->frame.data[0]);
 				ecu_frame_crc_calc = crc16_ccitt((uint8_t*)(&ecu_r->frame),ecu_r->count_end - ECU_CRC_COUNT);
 				if(ecu_frame_crc_read == ecu_frame_crc_calc) {
-					ecu_write_frame_data(&ecu_frame_write,ecu_addr_0,(ecu_r->frame.cmd_addr.cmd & 0x0F),ecu_r);
+					ecu_write_frame_data(&ecu_frame_write,ecu_addr_0,ecu_r);
 					usart_write(usart_dma,(uint8_t*)(&ecu_frame_write.frame),ecu_frame_write.count);
 				}
 			}
@@ -102,7 +104,7 @@ void ecu_read_handler(ecu_rw_t* ecu_r,usart_dma_t* usart_dma) {
 			};
         }
     } else {
-    	ecu_cmd_type = 0;
+    	ecu_cmd_type = ECU_CMD_TYPE_DEF;
     	ecu_r->count = 0;
     	ecu_r->count_end = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
     }
