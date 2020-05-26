@@ -5,10 +5,11 @@
  *      Author: ruslan
  */
 #include "main.h"
+#include "ign_angle_mg_by_cycle.h"
 
 volatile void *ecu_addr_0[] = {
-		&GPIOC->ODR,
-		&GPIOD->ODR
+		&GPIOD->ODR,
+		ign_angle_mg_by_cycle
 };
 
 void usart2_readyRead(usart_dma_t* usart_dma) {
