@@ -7,11 +7,14 @@ void ecu_read_frame_data(ecu_rw_t *ecu_r,volatile void **data) {
 	uint16_t point = 0;
 	while (--write_count) {
 		switch (type) {
-		case ECU_DATA_TYPE_8: ((uint8_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + point] = ((uint8_t*)(ecu_r->frame.data))[point];
+		case ECU_DATA_TYPE_8: ((uint8_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + point] =
+				((uint8_t*)(ecu_r->frame.data))[point];
 			break;
-		case ECU_DATA_TYPE_16: ((uint16_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + point] = ((uint16_t*)(&ecu_r->frame.data))[point];
+		case ECU_DATA_TYPE_16: ((uint16_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + point] =
+				((uint16_t*)(&ecu_r->frame.data))[point];
 			break;
-		case ECU_DATA_TYPE_32: ((uint32_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + point] = ((uint32_t*)(&ecu_r->frame.data))[point];
+		case ECU_DATA_TYPE_32: ((uint32_t*)(data[ecu_r->frame.cmd_addr.addr]))[write_start + point] =
+				((uint32_t*)(&ecu_r->frame.data))[point];
 			break;
 		default:
 			return;
@@ -25,25 +28,43 @@ void ecu_write_frame_data(ecu_rw_t* ecu_w,volatile void **data,uint8_t cmd,uint1
 	ecu_w->frame.cmd_addr.addr = addr;
 	ecu_w->frame.service_data.start = start;
 	ecu_w->frame.service_data.count = count;
-	uint8_t data_type = ecu_w->frame.cmd_addr.cmd & ECU_DATA_TYPE_MASK;
-	uint16_t read_start = (ecu_w->frame.service_data.start / data_type);
-	uint16_t read_count = (ecu_w->frame.service_data.count / data_type) + 1;
-	uint16_t point = 0;
-	while (--read_count) {
-		switch (data_type) {
-		case ECU_DATA_TYPE_8: ((uint8_t*)(ecu_w->frame.data))[point] = ((uint8_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + point];
-			break;
-		case ECU_DATA_TYPE_16: ((uint16_t*)(ecu_w->frame.data))[point] = ((uint16_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + point];
-			break;
-		case ECU_DATA_TYPE_32: ((uint32_t*)(ecu_w->frame.data))[point] = ((uint32_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + point];
-			break;
-		default:
-			return;
-		};
-		point++;
+	uint8_t cmd_type = ecu_w->frame.cmd_addr.cmd & ECU_CMD_MASK;
+	switch (cmd_type) {
+	case ECU_CMD_WRITE: {
+		ecu_w->count = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT;
+		*(uint16_t*) (&ecu_w->frame.data[0]) =
+				crc16_ccitt((uint8_t*) (&ecu_w->frame), ecu_w->count);
 	}
-	ecu_w->count = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT + ecu_w->frame.service_data.count;
-	*(uint16_t*)(&ecu_w->frame.data[ecu_w->frame.service_data.count]) = crc16_ccitt((uint8_t*)(&ecu_w->frame),ecu_w->count);
+		break;
+	case ECU_CMD_READ: {
+		uint8_t data_type = ecu_w->frame.cmd_addr.cmd & ECU_DATA_TYPE_MASK;
+		uint16_t read_start = (ecu_w->frame.service_data.start / data_type);
+		uint16_t read_count = (ecu_w->frame.service_data.count / data_type) + 1;
+		uint16_t point = 0;
+		while (--read_count) {
+			switch (data_type) {
+			case ECU_DATA_TYPE_8: ((uint8_t*)(ecu_w->frame.data))[point] =
+					((uint8_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + point];
+				break;
+			case ECU_DATA_TYPE_16: ((uint16_t*)(ecu_w->frame.data))[point] =
+					((uint16_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + point];
+				break;
+			case ECU_DATA_TYPE_32: ((uint32_t*)(ecu_w->frame.data))[point] =
+					((uint32_t*)(data[ecu_w->frame.cmd_addr.addr]))[read_start + point];
+				break;
+			default:
+				return;
+			};
+			point++;
+		}
+		ecu_w->count = ECU_CMD_ADDR_COUNT + ECU_SERVICE_DATA_COUNT + ecu_w->frame.service_data.count;
+		*(uint16_t*)(&ecu_w->frame.data[ecu_w->frame.service_data.count]) =
+				crc16_ccitt((uint8_t*)(&ecu_w->frame),ecu_w->count);
+	}
+		break;
+	default:
+		break;
+	};
 	ecu_w->count += ECU_CRC_COUNT;
 }
 
