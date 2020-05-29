@@ -13,7 +13,7 @@ volatile void *ecu_addr_0[] = {
 };
 
 void usart2_readyRead(usart_dma_t* usart_dma) {
-	ecu_protocol_handler(&ecu_protocol,usart_dma,ecu_addr_0);
+	ecu_protocol_handler(&ecu_protocol,usart_bytesAvailable(usart_dma),ecu_addr_0);
 }
 
 void delay_1s(void) {
@@ -51,6 +51,19 @@ void usart2_dma_struct_init() {
 	usart2_dma.usart_readyRead = (void*)(&usart2_readyRead);
 }
 
+void ecu_protocol_usart_read(uint8_t* data,uint8_t count) {
+	usart_read(&usart2_dma,data,count);
+}
+
+void ecu_protocol_usart_write(uint8_t* data,uint8_t count) {
+	usart_write(&usart2_dma,data,count);
+}
+
+void ecu_protocol_init() {
+	ecu_protocol.serial_read = &ecu_protocol_usart_read;
+	ecu_protocol.serial_write = &ecu_protocol_usart_write;
+}
+
 int main() {
 	delay_1s();
 	rcc_init();
@@ -58,6 +71,7 @@ int main() {
 	gpio_uart2_init();
 	uart2_dma_init();
 	usart2_dma_struct_init();
+	ecu_protocol_init();
 	xTaskCreateStatic(vUsart2_RW,"vUsart2_RW",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2_Stack,&vUsart2_TaskBuffer);
 	vTaskStartScheduler();
 }

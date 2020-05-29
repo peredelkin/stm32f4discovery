@@ -68,10 +68,10 @@ void ecu_write_frame_data(ecu_rw_t* ecu_w,volatile void **data,uint8_t cmd,uint1
 	ecu_w->count += ECU_CRC_COUNT;
 }
 
-void ecu_protocol_handler(ecu_protocol_t* protocol,usart_dma_t* usart_dma,volatile void **directory) {
+void ecu_protocol_handler(ecu_protocol_t* protocol,uint8_t bytes_available,volatile void **directory) {
     if(protocol->read.count_end != protocol->read.count) {
-        if(usart_bytesAvailable(usart_dma) >= (protocol->read.count_end - protocol->read.count)) {
-        	usart_read(usart_dma,&((uint8_t*)(&protocol->read.frame))[protocol->read.count],(protocol->read.count_end - protocol->read.count));
+        if(bytes_available >= (protocol->read.count_end - protocol->read.count)) {
+        	protocol->serial_read(&((uint8_t*)(&protocol->read.frame))[protocol->read.count],(protocol->read.count_end - protocol->read.count));
         	protocol->read.count = protocol->read.count_end;
 			switch (protocol->cmd_type) {
 			case ECU_CMD_TYPE_DEF: {
@@ -105,7 +105,7 @@ void ecu_protocol_handler(ecu_protocol_t* protocol,usart_dma_t* usart_dma,volati
 							protocol->read.frame.cmd_addr.addr,
 							protocol->read.frame.service_data.start,
 							protocol->read.frame.service_data.count);
-					usart_write(usart_dma,(uint8_t*)(&protocol->write.frame),protocol->write.count);
+					protocol->serial_write((uint8_t*)(&protocol->write.frame),protocol->write.count);
 				}
 			}
 				break;

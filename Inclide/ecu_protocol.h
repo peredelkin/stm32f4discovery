@@ -49,9 +49,11 @@ typedef struct {
 	uint8_t cmd_type;
 	uint16_t crc_calc;
 	uint16_t crc_read;
+	void (*serial_read)(uint8_t* data,uint8_t count);
+	void (*serial_write)(uint8_t* data,uint8_t count);
 } ecu_protocol_t;
 #pragma pack()
 
-extern void ecu_protocol_handler(ecu_protocol_t* protocol,usart_dma_t* usart_dma,volatile void **directory);
+extern void ecu_protocol_handler(ecu_protocol_t* protocol,uint8_t byte_available,volatile void **directoryy);
 
 #endif // ECU_PROTOCOL_H
