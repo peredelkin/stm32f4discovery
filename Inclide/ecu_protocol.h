@@ -1,7 +1,6 @@
 #ifndef ECU_PROTOCOL_H
 #define ECU_PROTOCOL_H
 
-#include "uart.h"
 #include "crc16_ccitt.h"
 
 #define ECU_CMD_ADDR_COUNT 3
@@ -38,22 +37,25 @@ typedef struct {
 } ecu_frame_t;
 
 typedef struct {
-	uint16_t count;
-	uint16_t count_end;
-	ecu_frame_t frame;
+    uint16_t count;
+    uint16_t count_end;
+    ecu_frame_t frame;
 } ecu_rw_t;
 
 typedef struct {
-	ecu_rw_t read;
-	ecu_rw_t write;
-	uint8_t cmd_type;
-	uint16_t crc_calc;
-	uint16_t crc_read;
-	void (*serial_read)(uint8_t* data,uint8_t count);
-	void (*serial_write)(uint8_t* data,uint8_t count);
+    ecu_rw_t read;
+    ecu_rw_t write;
+    uint8_t cmd_type;
+    uint16_t crc_calc;
+    uint16_t crc_read;
+    void* port;
+    void (*serial_read)(void* port,uint8_t* data,uint8_t count);
+    void (*serial_write)(void* port,uint8_t* data,uint8_t count);
 } ecu_protocol_t;
 #pragma pack()
 
-extern void ecu_protocol_handler(ecu_protocol_t* protocol,uint8_t byte_available,volatile void **directoryy);
+extern void ecu_protocol_count_init(ecu_protocol_t* protocol);
+extern void ecu_write_frame_data(ecu_protocol_t* protocol,volatile void **data,uint8_t cmd,uint16_t addr,uint16_t start,uint8_t count);
+extern void ecu_protocol_handler(ecu_protocol_t* protocol,uint8_t byte_available,volatile void **directory);
 
 #endif // ECU_PROTOCOL_H

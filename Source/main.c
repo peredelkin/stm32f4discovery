@@ -51,15 +51,16 @@ void usart2_dma_struct_init() {
 	usart2_dma.usart_readyRead = (void*)(&usart2_readyRead);
 }
 
-void ecu_protocol_usart_read(uint8_t* data,uint8_t count) {
+void ecu_protocol_usart_read(void* serial,uint8_t* data,uint8_t count) {
 	usart_read(&usart2_dma,data,count);
 }
 
-void ecu_protocol_usart_write(uint8_t* data,uint8_t count) {
+void ecu_protocol_usart_write(void* serial,uint8_t* data,uint8_t count) {
 	usart_write(&usart2_dma,data,count);
 }
 
-void ecu_protocol_init() {
+void ecu_struct_protocol_init() {
+	ecu_protocol.port = &usart2_dma;
 	ecu_protocol.serial_read = &ecu_protocol_usart_read;
 	ecu_protocol.serial_write = &ecu_protocol_usart_write;
 }
@@ -71,7 +72,7 @@ int main() {
 	gpio_uart2_init();
 	uart2_dma_init();
 	usart2_dma_struct_init();
-	ecu_protocol_init();
+	ecu_struct_protocol_init();
 	xTaskCreateStatic(vUsart2_RW,"vUsart2_RW",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2_Stack,&vUsart2_TaskBuffer);
 	vTaskStartScheduler();
 }
