@@ -52,11 +52,11 @@ void usart2_dma_struct_init() {
 }
 
 void ecu_protocol_usart_read(void* serial,uint8_t* data,uint8_t count) {
-	usart_read(&usart2_dma,data,count);
+	usart_read(serial,data,count);
 }
 
 void ecu_protocol_usart_write(void* serial,uint8_t* data,uint8_t count) {
-	usart_write(&usart2_dma,data,count);
+	usart_write(serial,data,count);
 }
 
 void ecu_struct_protocol_init() {
