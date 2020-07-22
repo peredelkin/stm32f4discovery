@@ -21,6 +21,11 @@ void delay_1s(void) {
 	while (--i);
 }
 
+void delay_01s(void) {
+	uint32_t i = 1680000;
+	while (--i);
+}
+
 void vUsart2_RW (void *pvParameters) {
 	configASSERT( ( uint32_t ) pvParameters == 1UL );
     while(1) {
@@ -59,11 +64,30 @@ void ecu_protocol_usart_write(void* serial,uint8_t* data,uint16_t count) {
 	usart_write(serial,data,(uint8_t)count);
 }
 
+void ecu_protocol_crc_error(void *user_pointer, void *protocol) {
+	uint8_t count = 5;
+	while (count--) {
+		GPIOD->ODR |= GPIO_ODR_ODR_15;
+		delay_1s();
+		GPIOD->ODR &= ~GPIO_ODR_ODR_15;
+		delay_1s();
+	}
+}
+
+void ecu_protocol_ack(void* user_pointer,void* protocol) {
+	GPIOD->ODR |= GPIO_ODR_ODR_14;
+	delay_01s();
+	GPIOD->ODR &= ~GPIO_ODR_ODR_14;
+}
+
 void ecu_struct_protocol_init() {
 	ecu_slave_protocol.read.device.port = &usart2_dma;
 	ecu_slave_protocol.write.device.port = &usart2_dma;
 	ecu_slave_protocol.read.device.transfer = &ecu_protocol_usart_read;
 	ecu_slave_protocol.write.device.transfer = &ecu_protocol_usart_write;
+
+	ecu_slave_protocol.crc_err.callback = &ecu_protocol_crc_error;
+	ecu_slave_protocol.ack_received.callback = &ecu_protocol_ack;
 }
 
 int main() {
