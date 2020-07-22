@@ -18,13 +18,13 @@
 #include "gpio.h"
 #include "uart.h"
 
-#include "ecu_protocol.h"
+#include "simple_protocol.h"
 
 #define VUSART2_STACK_SIZE (configMINIMAL_STACK_SIZE * 2)
 StaticTask_t vUsart2_TaskBuffer;
 StackType_t vUsart2_Stack[ VUSART2_STACK_SIZE ];
 
-ecu_protocol_t ecu_protocol;
+simple_protocol_link_layer_t ecu_slave_protocol;
 
 uint8_t usart2_dma_rx_buffer[DMA_RX_BUFFER_SIZE];
 uint8_t usart2_dma_tx_buffer[DMA_TX_BUFFER_SIZE];
@@ -75,7 +75,7 @@ void uart2_dma_init() {
 	USART2->CR3 =	USART_CR3_DMAT |	/* DMA enable transmitter	*/
 					USART_CR3_DMAR;		/* DMA enable receiver		*/
 
-	USART_BaudRate_Set(USART2,SystemCoreClock/4,115200);
+	USART_BaudRate_Set(USART2,SystemCoreClock/4,9600);
 
 	//USART2_RX Channel 4 Stream 5
 	DMA1_Stream5->NDTR = DMA_RX_BUFFER_SIZE;

@@ -7,13 +7,13 @@
 #include "main.h"
 #include "ign_angle_mg_by_cycle.h"
 
-volatile void *ecu_addr_0[] = {
+volatile void *ecu_addr_ptrs[] = {
 		&GPIOD->ODR,
 		ign_angle_mg_by_cycle
 };
 
 void usart2_readyRead(usart_dma_t* usart_dma) {
-	ecu_protocol_handler(&ecu_protocol,usart_bytesAvailable(usart_dma),ecu_addr_0);
+	simple_protocol_handler(&ecu_slave_protocol,usart_bytesAvailable(usart_dma),ecu_addr_ptrs);
 }
 
 void delay_1s(void) {
@@ -51,18 +51,19 @@ void usart2_dma_struct_init() {
 	usart2_dma.usart_readyRead = (void*)(&usart2_readyRead);
 }
 
-void ecu_protocol_usart_read(void* serial,uint8_t* data,uint8_t count) {
-	usart_read(serial,data,count);
+void ecu_protocol_usart_read(void* serial,uint8_t* data,uint16_t count) {
+	usart_read(serial,data,(uint8_t)count);
 }
 
-void ecu_protocol_usart_write(void* serial,uint8_t* data,uint8_t count) {
-	usart_write(serial,data,count);
+void ecu_protocol_usart_write(void* serial,uint8_t* data,uint16_t count) {
+	usart_write(serial,data,(uint8_t)count);
 }
 
 void ecu_struct_protocol_init() {
-	ecu_protocol.port = &usart2_dma;
-	ecu_protocol.serial_read = &ecu_protocol_usart_read;
-	ecu_protocol.serial_write = &ecu_protocol_usart_write;
+	ecu_slave_protocol.read.device.port = &usart2_dma;
+	ecu_slave_protocol.write.device.port = &usart2_dma;
+	ecu_slave_protocol.read.device.transfer = &ecu_protocol_usart_read;
+	ecu_slave_protocol.write.device.transfer = &ecu_protocol_usart_write;
 }
 
 int main() {
