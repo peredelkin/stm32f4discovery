@@ -13,7 +13,7 @@ volatile void *ecu_addr_ptrs[] = {
 };
 
 void usart2_readyRead(usart_dma_t* usart_dma) {
-	simple_protocol_handler(&ecu_slave_protocol,usart_bytesAvailable(usart_dma),ecu_addr_ptrs);
+	simple_protocol_handler(&ecu_slave_protocol,usart_bytesAvailable(usart_dma));
 }
 
 void delay_1s(void) {
@@ -65,29 +65,26 @@ void ecu_protocol_usart_write(void* serial,uint8_t* data,uint16_t count) {
 }
 
 void ecu_protocol_crc_error(void *user_pointer, void *protocol) {
-	uint8_t count = 5;
-	while (count--) {
-		GPIOD->ODR |= GPIO_ODR_ODR_15;
-		delay_1s();
-		GPIOD->ODR &= ~GPIO_ODR_ODR_15;
-		delay_1s();
-	}
-}
-
-void ecu_protocol_ack(void* user_pointer,void* protocol) {
 	GPIOD->ODR |= GPIO_ODR_ODR_14;
-	delay_01s();
+	delay_1s();
 	GPIOD->ODR &= ~GPIO_ODR_ODR_14;
 }
 
+void ecu_protocol_data_written(void *user_pointer, void *protocol) {
+	GPIOD->ODR |= GPIO_ODR_ODR_15;
+	delay_01s();
+	GPIOD->ODR &= ~GPIO_ODR_ODR_15;
+}
+
 void ecu_struct_protocol_init() {
+	ecu_slave_protocol.service.addr = 1;
+	ecu_slave_protocol.addr_ptrs = ecu_addr_ptrs;
 	ecu_slave_protocol.read.device.port = &usart2_dma;
 	ecu_slave_protocol.write.device.port = &usart2_dma;
 	ecu_slave_protocol.read.device.transfer = &ecu_protocol_usart_read;
 	ecu_slave_protocol.write.device.transfer = &ecu_protocol_usart_write;
-
 	ecu_slave_protocol.crc_err.callback = &ecu_protocol_crc_error;
-	ecu_slave_protocol.ack_received.callback = &ecu_protocol_ack;
+	ecu_slave_protocol.data_written.callback = &ecu_protocol_data_written;
 }
 
 int main() {
