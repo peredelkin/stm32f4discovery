@@ -21,8 +21,12 @@
 #include "simple_protocol.h"
 
 #define VUSART2_STACK_SIZE (configMINIMAL_STACK_SIZE * 2)
-StaticTask_t vUsart2_TaskBuffer;
-StackType_t vUsart2_Stack[ VUSART2_STACK_SIZE ];
+
+StaticTask_t vUsart2RX_TaskBuffer;
+StackType_t vUsart2RX_Stack[ VUSART2_STACK_SIZE ];
+
+StaticTask_t vUsart2TX_TaskBuffer;
+StackType_t vUsart2TX_Stack[ VUSART2_STACK_SIZE ];
 
 simple_protocol_link_layer_t ecu_slave_protocol;
 

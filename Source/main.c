@@ -26,10 +26,16 @@ void delay_01s(void) {
 	while (--i);
 }
 
-void vUsart2_RW (void *pvParameters) {
+void vUsart2_R (void *pvParameters) {
 	configASSERT( ( uint32_t ) pvParameters == 1UL );
     while(1) {
     	usart_dma_read_handler(&usart2_dma);
+    }
+}
+
+void vUsart2_W (void *pvParameters) {
+	configASSERT( ( uint32_t ) pvParameters == 1UL );
+    while(1) {
     	usart_dma_write_handler(&usart2_dma);
     }
 }
@@ -65,15 +71,11 @@ void ecu_protocol_usart_write(void* serial,uint8_t* data,uint16_t count) {
 }
 
 void ecu_protocol_crc_error(void *user_pointer, void *protocol) {
-	GPIOD->ODR |= GPIO_ODR_ODR_14;
-	delay_1s();
-	GPIOD->ODR &= ~GPIO_ODR_ODR_14;
+
 }
 
 void ecu_protocol_data_written(void *user_pointer, void *protocol) {
-	GPIOD->ODR |= GPIO_ODR_ODR_15;
-	delay_01s();
-	GPIOD->ODR &= ~GPIO_ODR_ODR_15;
+
 }
 
 void ecu_struct_protocol_init() {
@@ -95,6 +97,7 @@ int main() {
 	uart2_dma_init();
 	usart2_dma_struct_init();
 	ecu_struct_protocol_init();
-	xTaskCreateStatic(vUsart2_RW,"vUsart2_RW",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2_Stack,&vUsart2_TaskBuffer);
+	xTaskCreateStatic(vUsart2_R,"vUsart2_R",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2TX_Stack,&vUsart2TX_TaskBuffer);
+	xTaskCreateStatic(vUsart2_W,"vUsart2_W",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2RX_Stack,&vUsart2RX_TaskBuffer);
 	vTaskStartScheduler();
 }
