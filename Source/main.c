@@ -74,7 +74,7 @@ void ecu_protocol_crc_error(void *user_pointer, void *protocol) {
 
 }
 
-void ecu_protocol_data_written(void *user_pointer, void *protocol) {
+void ecu_protocol_data_write(void *user_pointer, void *protocol) {
 
 }
 
@@ -86,7 +86,7 @@ void ecu_struct_protocol_init() {
 	ecu_slave_protocol.read.device.transfer = &ecu_protocol_usart_read;
 	ecu_slave_protocol.write.device.transfer = &ecu_protocol_usart_write;
 	ecu_slave_protocol.crc_err.callback = &ecu_protocol_crc_error;
-	ecu_slave_protocol.data_written.callback = &ecu_protocol_data_written;
+	ecu_slave_protocol.data_write.callback = &ecu_protocol_data_write;
 }
 
 int main() {

@@ -79,7 +79,7 @@ void uart2_dma_init() {
 	USART2->CR3 =	USART_CR3_DMAT |	/* DMA enable transmitter	*/
 					USART_CR3_DMAR;		/* DMA enable receiver		*/
 
-	USART_BaudRate_Set(USART2,SystemCoreClock/4,57600);
+	USART_BaudRate_Set(USART2,SystemCoreClock/4,115200);
 
 	//USART2_RX Channel 4 Stream 5
 	DMA1_Stream5->NDTR = DMA_RX_BUFFER_SIZE;
