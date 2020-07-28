@@ -30,15 +30,16 @@ void vUsart2_R (void *pvParameters) {
 	configASSERT( ( uint32_t ) pvParameters == 1UL );
     while(1) {
     	usart_dma_read_handler(&usart2_dma);
-    }
-}
-
-void vUsart2_W (void *pvParameters) {
-	configASSERT( ( uint32_t ) pvParameters == 1UL );
-    while(1) {
     	usart_dma_write_handler(&usart2_dma);
     }
 }
+
+//void vUsart2_W (void *pvParameters) {
+//	configASSERT( ( uint32_t ) pvParameters == 1UL );
+//    while(1) {
+//    	usart_dma_write_handler(&usart2_dma);
+//    }
+//}
 
 void usart2_dma_struct_init() {
 	usart2_dma.read.count = 0;
@@ -85,8 +86,8 @@ void ecu_struct_protocol_init() {
 	ecu_slave_protocol.write.device.port = &usart2_dma;
 	ecu_slave_protocol.read.device.transfer = &ecu_protocol_usart_read;
 	ecu_slave_protocol.write.device.transfer = &ecu_protocol_usart_write;
-	ecu_slave_protocol.crc_err.callback = &ecu_protocol_crc_error;
-	ecu_slave_protocol.data_write.callback = &ecu_protocol_data_write;
+	//ecu_slave_protocol.crc_err.callback = &ecu_protocol_crc_error;
+	//ecu_slave_protocol.data_write.callback = &ecu_protocol_data_write;
 }
 
 int main() {
@@ -97,7 +98,7 @@ int main() {
 	uart2_dma_init();
 	usart2_dma_struct_init();
 	ecu_struct_protocol_init();
-	xTaskCreateStatic(vUsart2_R,"vUsart2_R",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2TX_Stack,&vUsart2TX_TaskBuffer);
-	xTaskCreateStatic(vUsart2_W,"vUsart2_W",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2RX_Stack,&vUsart2RX_TaskBuffer);
+	xTaskCreateStatic(vUsart2_R,"vUsart2_R",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2RX_Stack,&vUsart2RX_TaskBuffer);
+	//xTaskCreateStatic(vUsart2_W,"vUsart2_W",VUSART2_STACK_SIZE,(void *) 1,tskIDLE_PRIORITY,vUsart2RX_Stack,&vUsart2RX_TaskBuffer);
 	vTaskStartScheduler();
 }

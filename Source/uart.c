@@ -62,26 +62,30 @@ void usart_dma_read_handler(usart_dma_t* usart_dma) {
 }
 
 void usart_dma_write_handler(usart_dma_t *usart_dma) {
+//	if(usart_dma->usart->SR & USART_SR_TXE) {
+//		usart_dma->write.count = usart_dma->write.write_point - usart_dma->write.read_point;
+//		if (usart_dma->write.count) {
+//			usart_dma->usart->DR = usart_dma->write.data[usart_dma->write.read_point];
+//			usart_dma->write.read_point++;
+//		}
+//	}
+
 	if(usart_dma->dma->ISR[usart_dma->write.HIGH] & usart_dma->write.TCIF) {
 		usart_dma->write.stream->CR &= ~DMA_SxCR_EN;
 		usart_dma->dma->IFCR[usart_dma->write.HIGH] = usart_dma->write.TCIF;
+		usart_dma->write.read_point += usart_dma->write.count;
 	}
 
 	if(!(usart_dma->write.stream->CR & DMA_SxCR_EN)) {
 		usart_dma->write.count = usart_dma->write.write_point - usart_dma->write.read_point;
 		if(usart_dma->write.count) {
-
-			if((usart_dma->write.read_point + usart_dma->write.count) > 256) {
+			if((usart_dma->write.read_point + usart_dma->write.count) >= 256) {
 				usart_dma->write.count = 256 - usart_dma->write.read_point;
 			}
 			usart_dma->write.stream->MAR[0] = (uint32_t) &(usart_dma->write.data[usart_dma->write.read_point]);
 			usart_dma->write.stream->NDTR = usart_dma->write.count;
-			usart_dma->write.read_point += usart_dma->write.count;
 			usart_dma->write.stream->CR |= DMA_SxCR_EN;
-		} else {
-			if(usart_dma->usart->SR & USART_SR_TC) {
-				usart_dma->usart->SR = ~USART_SR_TC;
-			}
+			usart_dma->usart->SR = ~USART_SR_TC;
 		}
 	}
 }
